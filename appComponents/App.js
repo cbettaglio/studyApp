@@ -49,6 +49,9 @@ export default function App() {
         <Stack.Screen
           name="Quiz"
           component={Quiz}
+          initialParams={{
+            userAnswers: [],
+          }}
           options={{ headerShown: false }}
         />
         <Stack.Screen
@@ -99,7 +102,8 @@ function Home({ route, navigation }) {
 }
 function Quiz({ route, navigation }) {
   const { questions, questionNum } = route.params;
-  const [userAnswers, setUserAnswers] = useState([]);
+  const [userAnswers, setUserAnswers] = useState(route.params.userAnswers);
+  const [curAnswer, setCurAnswer] = useState("");
   let { prompt, type, choices } = questions[questionNum];
   let nextQuestion = () => {
     let nextQuestion = questionNum + 1;
@@ -110,6 +114,7 @@ function Quiz({ route, navigation }) {
       navigation.navigate("Quiz", {
         questionNum: nextQuestion,
         questions: questions,
+        userAnswers,
       });
     } else {
       navigation.navigate("Summary");
@@ -117,44 +122,51 @@ function Quiz({ route, navigation }) {
   };
   let questionType;
   if (type === "input") {
-    questionType = <InputText handleAnswer={setUserAnswers}></InputText>;
+    questionType = <InputText handleAnswer={setCurAnswer}></InputText>;
   } else if (type === "drop-down") {
     questionType = (
-      <DropDown choices={choices} handleAnswer={setUserAnswers}></DropDown>
+      <DropDown choices={choices} handleAnswer={setCurAnswer}></DropDown>
     );
   } else {
     questionType = (
       <MultipleChoice
         choices={choices}
-        handleAnswer={setUserAnswers}
+        handleAnswer={setCurAnswer}
       ></MultipleChoice>
     );
   }
-  console.log(userAnswers);
+  console.log("current answer:" + curAnswer);
+  console.log("User answers array:" + userAnswers);
   return (
     <View>
       <Text>{prompt}</Text>
       {questionType}
-      <Button title="submit" onPress={nextQuestion}></Button>
+      <Button
+        title="submit"
+        onPress={() => {
+          nextQuestion();
+          setUserAnswers([...userAnswers, curAnswer]);
+        }}
+      ></Button>
     </View>
   );
 }
 
-function InputText(handleAnswer) {
+function InputText({ handleAnswer }) {
   let [answerText, setAnswerText] = useState("");
   return (
     <Input
       placeholder="Your answer"
-      onChangeText={() => {
-        setAnswerText;
-        handleAnswer([...userAnswers, answerText]);
+      value={answerText}
+      onChangeText={(value) => {
+        setAnswerText(value);
+        handleAnswer(value);
       }}
     ></Input>
   );
 }
 
-function DropDown({ choices }) {
-  console.log(choices);
+function DropDown({ choices, handleAnswer }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(null);
   const items = choices.map((choices) => {
@@ -163,7 +175,7 @@ function DropDown({ choices }) {
       value: choices,
     };
   });
-  console.log(value);
+
   return (
     <>
       <DropDownPicker
@@ -171,20 +183,25 @@ function DropDown({ choices }) {
         value={value}
         items={items}
         setOpen={setOpen}
-        setValue={setValue}
+        setValue={(value) => {
+          setValue(value);
+          handleAnswer(value);
+        }}
       />
     </>
   );
 }
 
-function MultipleChoice({ choices }) {
+function MultipleChoice({ choices, handleAnswer }) {
   const [selectedIndex, setSelectedIndex] = useState();
-  let userSelected = choices[selectedIndex];
   return (
     <ButtonGroup
       buttons={choices}
       vertical
-      onPress={(value) => setSelectedIndex(value)}
+      onPress={(value) => {
+        setSelectedIndex(value);
+        handleAnswer(choices[value]);
+      }}
       selectedIndex={selectedIndex}
     ></ButtonGroup>
   );
