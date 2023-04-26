@@ -17,19 +17,19 @@ let quizArray = [
       {
         prompt: "This is an input question",
         type: "input",
-        answer: "Input answer",
+        answer: "Input",
       },
       {
         prompt: "This is a dropdown question",
         type: "drop-down",
         choices: ["choice1", "choice2", "choice3"],
-        answer: "dropdown",
+        answer: "choice1",
       },
       {
         prompt: "This is a multiple choice question",
         type: "multiple-choice",
         choices: ["choice1", "choice2", "choice3"],
-        answer: "choices",
+        answer: "choice2",
       },
     ],
   },
@@ -72,7 +72,6 @@ export default function App() {
 function Home({ route, navigation }) {
   // displays quizzes to home page
   const { quizDisplay } = route.params;
-  console.log(quizDisplay);
   return (
     <View>
       <Text style={styles.header}>Your quizzes:</Text>
@@ -108,16 +107,16 @@ function Quiz({ route, navigation }) {
   let nextQuestion = () => {
     let nextQuestion = questionNum + 1;
     if (nextQuestion < questions.length) {
-      console.log("Going to next question...");
-      console.log({ questionNum: nextQuestion, questions: questions });
-      console.log("Question type:" + type);
+      // console.log("Going to next question...");
+      // console.log({ questionNum: nextQuestion, questions: questions });
+      // console.log("Question type:" + type);
       navigation.navigate("Quiz", {
         questionNum: nextQuestion,
         questions: questions,
         userAnswers,
       });
     } else {
-      navigation.navigate("Summary");
+      navigation.navigate("Summary", { userAnswers, questions });
     }
   };
   let questionType;
@@ -135,7 +134,6 @@ function Quiz({ route, navigation }) {
       ></MultipleChoice>
     );
   }
-  console.log("current answer:" + curAnswer);
   console.log("User answers array:" + userAnswers);
   return (
     <View>
@@ -144,8 +142,8 @@ function Quiz({ route, navigation }) {
       <Button
         title="submit"
         onPress={() => {
-          nextQuestion();
           setUserAnswers([...userAnswers, curAnswer]);
+          nextQuestion();
         }}
       ></Button>
     </View>
@@ -206,10 +204,28 @@ function MultipleChoice({ choices, handleAnswer }) {
     ></ButtonGroup>
   );
 }
-function Summary({ navigation }) {
+function Summary({ navigation, route }) {
+  const { userAnswers, questions } = route.params;
+  let calculateCorrect = (userAnswer, answer) => {
+    let correct = userAnswer == answer;
+    return correct;
+  };
+  let totalScore = 0;
+  for (let i = 0; i < questions.length; i++) {
+    if (calculateCorrect(userAnswers[i], questions[i].answer)) {
+      totalScore++;
+    }
+  }
   return (
     <View>
-      <Button title="Home" onPress={() => navigation.navigate("Home")}></Button>
+      <Text>{userAnswers}</Text>
+      <Text>
+        Your score: {totalScore} / {questions.length}
+      </Text>
+      <Button
+        title="Home"
+        onPress={() => navigation.navigate("Home", { userAnswers: [] })}
+      ></Button>
     </View>
   );
 }
@@ -271,7 +287,7 @@ function CreateQuiz({ navigation, route }) {
           style={[styles.button, styles.buttonOpen]}
           onPress={() => {
             setDropChoices([...dropChoices, choicesText]);
-            console.log(dropChoices);
+            // console.log(dropChoices);
           }}
         >
           <Text style={styles.textStyle}>Add choice</Text>
@@ -309,8 +325,8 @@ function CreateQuiz({ navigation, route }) {
     };
   }
   let renderItem = ({ item }) => {
-    console.log("Returning flatlist...");
-    console.log(item.type);
+    // console.log("Returning flatlist...");
+    // console.log(item.type);
     if (item.type !== "input") {
       return (
         <>
@@ -405,8 +421,8 @@ function CreateQuiz({ navigation, route }) {
             questions: questions,
           };
           quizArray.push(quiz);
-          console.log("quiz just added:" + { quiz });
-          console.log("quiz array:" + { quizArray });
+          // console.log("quiz just added:" + { quiz });
+          // console.log("quiz array:" + { quizArray });
           navigation.navigate("Home", { quizDisplay: quizArray });
         }}
       ></Button>
