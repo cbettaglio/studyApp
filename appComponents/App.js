@@ -1,14 +1,22 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import * as Font from "expo-font";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import DropDownPicker from "react-native-dropdown-picker";
 import { StyleSheet, Text, View, FlatList, Pressable } from "react-native";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Button, Input, CheckBox } from "@rneui/themed";
+import { Button, Input, CheckBox, Icon, ListItem } from "@rneui/themed";
 import { ButtonGroup } from "@rneui/base";
 import Modal from "react-native-modal";
 const Stack = createNativeStackNavigator();
 const navTheme = DefaultTheme;
-navTheme.colors.background = "#E8FCCF";
+navTheme.colors.background = "#FFFEFE";
+SplashScreen.preventAutoHideAsync();
+async function cacheFonts(fonts) {
+  return fonts.map(async (font) => await Font.loadAsync);
+}
 // array for all quizzes
 let quizArray = [
   {
@@ -35,6 +43,7 @@ let quizArray = [
   },
 ];
 export default function App() {
+  cacheFonts([FontAwesome.font]);
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator initialRouteName="Home">
@@ -70,38 +79,73 @@ export default function App() {
 }
 
 function Home({ route, navigation }) {
+  const [fontsLoaded] = useFonts({
+    "Nunito-Regular": require("./assets/fonts/Nunito-Regular.ttf"),
+    "Nunito-Bold": require("./assets/fonts/Nunito-Bold.ttf"),
+  });
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
   // displays quizzes to home page
   const { quizDisplay } = route.params;
   return (
-    <View>
+    <View style={styles.container} onLayout={onLayoutRootView}>
       <Text style={styles.header}>Your quizzes:</Text>
       <FlatList
         // style={[styles.button, styles.buttonQuiz]}
         data={quizDisplay}
         renderItem={({ item }) => {
           return (
-            <Button
-              title={item.title}
+            <Pressable
+              style={[styles.button, styles.buttonQuiz]}
               onPress={() =>
                 navigation.navigate("Quiz", {
                   questions: item.questions,
                   questionNum: 0,
                 })
               }
-            ></Button>
+            >
+              <Text style={styles.quizTextStyle}>{item.title}</Text>
+              <Text
+                style={{
+                  color: "white",
+                  textAlign: "left",
+                  fontSize: 15,
+                  marginLeft: 40,
+                  marginBottom: 20,
+                }}
+              >
+                Total questions: {item.questions.length}
+              </Text>
+            </Pressable>
           );
         }}
       ></FlatList>
-      <Button
-        title="Create a Quiz"
+      {/* <Pressable
         onPress={() => navigation.navigate("Create a Quiz")}
-      ></Button>
+        style={[styles.button, styles.buttonCreateQuiz]}
+      > */}
+      <Icon
+        reverse
+        raised
+        name="add"
+        color="#134611"
+        size="40"
+        onPress={() => navigation.navigate("Create a Quiz")}
+      ></Icon>
+      {/* </Pressable> */}
     </View>
   );
 }
 function Quiz({ route, navigation }) {
   const { questions, questionNum } = route.params;
-  const [userAnswers, setUserAnswers] = useState(route.params.userAnswers);
+  const userAnswers = route.params.userAnswers;
   const [curAnswer, setCurAnswer] = useState("");
   let { prompt, type, choices } = questions[questionNum];
   let nextQuestion = () => {
@@ -113,10 +157,13 @@ function Quiz({ route, navigation }) {
       navigation.navigate("Quiz", {
         questionNum: nextQuestion,
         questions: questions,
-        userAnswers,
+        userAnswers: [...userAnswers, curAnswer],
       });
     } else {
-      navigation.navigate("Summary", { userAnswers, questions });
+      navigation.navigate("Summary", {
+        userAnswers: [...userAnswers, curAnswer],
+        questions,
+      });
     }
   };
   let questionType;
@@ -142,7 +189,6 @@ function Quiz({ route, navigation }) {
       <Button
         title="submit"
         onPress={() => {
-          setUserAnswers([...userAnswers, curAnswer]);
           nextQuestion();
         }}
       ></Button>
@@ -204,8 +250,10 @@ function MultipleChoice({ choices, handleAnswer }) {
     ></ButtonGroup>
   );
 }
+// summary function intially provided by instrutor, adjusted for different question types
 function Summary({ navigation, route }) {
   const { userAnswers, questions } = route.params;
+  console.log(questions);
   let calculateCorrect = (userAnswer, answer) => {
     let correct = userAnswer == answer;
     return correct;
@@ -218,10 +266,60 @@ function Summary({ navigation, route }) {
   }
   return (
     <View>
-      <Text>{userAnswers}</Text>
       <Text>
         Your score: {totalScore} / {questions.length}
       </Text>
+      <FlatList
+        data={questions}
+        renderItem={({ item, index }) => {
+          console.log(item);
+          let userSelected = userAnswers[index];
+          let userCorrect = calculateCorrect(userSelected, item.answer);
+
+          console.log(item.type);
+          if (item.type == "input") {
+            let { prompt } = item;
+            return (
+              <View key={index}>
+                <Text>{prompt}</Text>
+                <Text>Your answer: {userSelected}</Text>
+              </View>
+            );
+          } else {
+            let { prompt, answer, choices } = item;
+            return (
+              <View key={index}>
+                <Text>{prompt}</Text>
+                {choices.map((value, choiceIndex) => {
+                  let correct = false;
+                  let userDidSelect = false;
+                  userDidSelect = userSelected == choiceIndex;
+                  correct = userCorrect;
+                  return (
+                    <CheckBox
+                      containerStyle={{
+                        backgroundColor: userDidSelect
+                          ? correct == true
+                            ? "lightgreen"
+                            : "red"
+                          : undefined,
+                      }}
+                      checked={userDidSelect == correct}
+                      textStyle={{
+                        textDecorationLine: correct
+                          ? undefined
+                          : "line-through",
+                      }}
+                      key={value}
+                      title={value}
+                    ></CheckBox>
+                  );
+                })}
+              </View>
+            );
+          }
+        }}
+      ></FlatList>
       <Button
         title="Home"
         onPress={() => navigation.navigate("Home", { userAnswers: [] })}
@@ -231,6 +329,7 @@ function Summary({ navigation, route }) {
 }
 
 function CreateQuiz({ navigation, route }) {
+  cacheFonts([FontAwesome.font]);
   let [title, setTitle] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedIndex, setIndex] = useState();
@@ -300,7 +399,7 @@ function CreateQuiz({ navigation, route }) {
       prompt: questionPrompt,
       type: type,
       choices: dropChoices,
-      answer: selectedIndex2,
+      answer: dropChoices[selectedIndex2],
     };
   } else if (selectedIndex === 2) {
     type = "multiple-choice";
@@ -321,33 +420,54 @@ function CreateQuiz({ navigation, route }) {
       prompt: questionPrompt,
       type: type,
       choices: multiChoices,
-      answer: selectedIndex2,
+      answer: multiChoices[selectedIndex2],
     };
   }
-  let renderItem = ({ item }) => {
+  let renderItem = ({ item, index }) => {
     // console.log("Returning flatlist...");
     // console.log(item.type);
     if (item.type !== "input") {
       return (
-        <>
-          <Text>{item.prompt}</Text>
-          <Text>choices: {item.choices}</Text>
-          <Text>answer: {item.choices[item.answer]}</Text>
-        </>
+        <View style={styles.questionContainer}>
+          <Text style={styles.header3}>Question #{index + 1}</Text>
+          <Text style={[styles.bodyText, { marginTop: 5 }]}>{item.prompt}</Text>
+          <Text style={styles.bodyText}>Choices:</Text>
+          <FlatList
+            data={item.choices}
+            renderItem={({ item }) => {
+              return (
+                <Text style={[styles.bodyText, { marginLeft: 20 }]}>
+                  {item}
+                </Text>
+              );
+            }}
+          ></FlatList>
+          <Text style={styles.bodyText}>Answer: {item.answer}</Text>
+        </View>
       );
     } else {
       return (
-        <>
-          <Text>{item.prompt}</Text>
-          <Text>answer: {item.answer}</Text>
-        </>
+        <View style={styles.questionContainer}>
+          <Text style={styles.header3}>Question #{index + 1}</Text>
+          <Text style={[styles.bodyText, { marginTop: 5 }]}>{item.prompt}</Text>
+          <Text style={styles.bodyText}>Answer: {item.answer}</Text>
+        </View>
       );
     }
   };
   return (
-    <View>
-      <Text>Enter quiz title</Text>
+    <View style={styles.container}>
+      <Text style={styles.header}>Create a Quiz</Text>
+      <Text style={styles.header2}>Enter quiz title:</Text>
       <Input placeholder="Title..." onChangeText={setTitle}></Input>
+      <Pressable
+        style={styles.buttonOpen}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={styles.textStyle}>Add a question</Text>
+      </Pressable>
+      <Text style={[styles.header2, { marginTop: 10 }]}>Your questions:</Text>
+      <FlatList data={questions} renderItem={renderItem}></FlatList>
       <View style={styles.centeredView}>
         <Modal
           animationType="slide"
@@ -358,61 +478,51 @@ function CreateQuiz({ navigation, route }) {
             setModalVisible(!modalVisible);
           }}
         >
-          <View style={styles.centeredView}>
-            <View style={styles.modalView}>
-              <Text style={styles.modalText}>Create a question</Text>
-              <Input
-                placeholder="Question prompt"
-                onChangeText={setQuestionPrompt}
-              ></Input>
-              <Text style={styles.modalText}>Question type:</Text>
-              <CheckBox
-                checked={selectedIndex === 0}
-                onPress={() => setIndex(0)}
-                checkedIcon="dot-circle-o"
-                uncheckedIcon="circle-o"
-                title="Input"
-              />
-              <CheckBox
-                checked={selectedIndex === 1}
-                onPress={() => setIndex(1)}
-                checkedIcon="dot-circle-o"
-                uncheckedIcon="circle-o"
-                title="Drop Down"
-              />
-              <CheckBox
-                checked={selectedIndex === 2}
-                onPress={() => setIndex(2)}
-                checkedIcon="dot-circle-o"
-                uncheckedIcon="circle-o"
-                title="Multiple Chpice"
-              />
-              {questionType}
-              <Pressable
-                style={[styles.button, styles.buttonClose]}
-                onPress={() => {
-                  setModalVisible(!modalVisible);
-                  setQuestions([...questions, questionObject]);
-                  console.log(questions);
-                  // clear the arrays
-                  setDropChoices([]);
-                  setMultiChoices([]);
-                }}
-              >
-                <Text style={styles.textStyle}>Save Question</Text>
-              </Pressable>
-            </View>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Create a question</Text>
+            <Input
+              placeholder="Question prompt"
+              onChangeText={setQuestionPrompt}
+            ></Input>
+            <Text style={styles.modalText}>Question type:</Text>
+            <CheckBox
+              checked={selectedIndex === 0}
+              onPress={() => setIndex(0)}
+              checkedIcon="dot-circle-o"
+              uncheckedIcon="circle-o"
+              title="Input"
+            />
+            <CheckBox
+              checked={selectedIndex === 1}
+              onPress={() => setIndex(1)}
+              checkedIcon="dot-circle-o"
+              uncheckedIcon="circle-o"
+              title="Drop Down"
+            />
+            <CheckBox
+              checked={selectedIndex === 2}
+              onPress={() => setIndex(2)}
+              checkedIcon="dot-circle-o"
+              uncheckedIcon="circle-o"
+              title="Multiple Chpice"
+            />
+            {questionType}
+            <Pressable
+              style={[styles.button, styles.buttonClose]}
+              onPress={() => {
+                setModalVisible(!modalVisible);
+                setQuestions([...questions, questionObject]);
+                console.log(questions);
+                // clear the arrays
+                setDropChoices([]);
+                setMultiChoices([]);
+              }}
+            >
+              <Text style={styles.textStyle}>Save Question</Text>
+            </Pressable>
           </View>
         </Modal>
-        <Pressable
-          style={[styles.button, styles.buttonOpen]}
-          onPress={() => setModalVisible(true)}
-        >
-          <Text style={styles.textStyle}>Add a question</Text>
-        </Pressable>
       </View>
-      <Text>Your questions:</Text>
-      <FlatList data={questions} renderItem={renderItem}></FlatList>
       <Button
         title="Save"
         onPress={() => {
@@ -431,18 +541,51 @@ function CreateQuiz({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  questionContainer: {
+    backgroundColor: "#FFFEFE",
+    padding: 10,
+    margin: 10,
+    borderRadius: 20,
+  },
+  container: {
+    borderRadius: 40,
+    marginTop: 45,
+    margin: 20,
+    backgroundColor: "#E8FCCF",
+    height: 750,
+  },
   backgrounColor: {
     backgroundColor: "green",
   },
   buttonQuiz: {
+    backgroundColor: "#3DA35D",
+    margin: 10,
+  },
+  buttonCreateQuiz: {
     backgroundColor: "#134611",
-    margin: 5,
+    borderRadius: 100,
+    height: 100,
+    width: 100,
+    padding: 10,
+    elevation: 2,
   },
   header: {
-    fontSize: 30,
+    fontSize: 45,
     fontFamily: "Nunito-Regular",
+    color: "#134611",
     margin: 20,
-    textAlign: "center",
+    textAlign: "left",
+  },
+  header2: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginLeft: 10,
+  },
+  header3: {
+    fontSize: 17,
+    fontWeight: "bold",
+    marginLeft: 10,
+    color: "#134611",
   },
   centeredView: {
     flex: 1,
@@ -471,15 +614,32 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   buttonOpen: {
-    backgroundColor: "#F194FF",
+    backgroundColor: "#3DA35D",
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
   },
   buttonClose: {
     backgroundColor: "#2196F3",
+  },
+  bodyText: {
+    fontSize: 15,
+    marginLeft: 10,
+    marginTop: 5,
   },
   textStyle: {
     color: "white",
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: 20,
+  },
+  quizTextStyle: {
+    color: "white",
+    fontWeight: "bold",
+    fontFamily: "Nunito-Regular",
+    textAlign: "left",
+    fontSize: 25,
+    margin: 40,
   },
   modalText: {
     marginBottom: 15,
