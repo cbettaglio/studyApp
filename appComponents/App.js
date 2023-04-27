@@ -4,19 +4,42 @@ import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import DropDownPicker from "react-native-dropdown-picker";
-import { StyleSheet, Text, View, FlatList, Pressable } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  Pressable,
+  Dimensions,
+  Image,
+} from "react-native";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Button, Input, CheckBox, Icon, ListItem } from "@rneui/themed";
 import { ButtonGroup } from "@rneui/base";
 import Modal from "react-native-modal";
+
+// Stack screens
 const Stack = createNativeStackNavigator();
+// creater new theme
 const navTheme = DefaultTheme;
 navTheme.colors.background = "#FFFEFE";
+// import fonts
 SplashScreen.preventAutoHideAsync();
 async function cacheFonts(fonts) {
   return fonts.map(async (font) => await Font.loadAsync);
 }
+
+// functions for creating a responsive design
+// src code: https://medium.com/simform-engineering/create-responsive-design-in-react-native-f84522a44365
+const { width, height } = Dimensions.get("window");
+
+const guidelineBaseWidth = 375;
+const guidelineBaseHeight = 812;
+
+const horizontalScale = (size) => (width / guidelineBaseWidth) * size;
+const verticalScale = (size) => (height / guidelineBaseHeight) * size;
+
 // array for all quizzes
 let quizArray = [
   {
@@ -95,8 +118,27 @@ function Home({ route, navigation }) {
   // displays quizzes to home page
   const { quizDisplay } = route.params;
   return (
-    <View style={styles.container} onLayout={onLayoutRootView}>
-      <Text style={styles.header}>Your quizzes:</Text>
+    <View style={[styles.container]} onLayout={onLayoutRootView}>
+      <View
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignContent: "center",
+          alignItems: "center",
+          gap: 5,
+        }}
+      >
+        <Text style={styles.header}>Your {"\n"}quizzes:</Text>
+        <Image
+          style={{
+            width: 90,
+            height: 102,
+            marginLeft: horizontalScale(-15),
+            margin: 35,
+          }}
+          source={require("../appComponents/assets/apple.png")}
+        ></Image>
+      </View>
       <FlatList
         // style={[styles.button, styles.buttonQuiz]}
         data={quizDisplay}
@@ -106,6 +148,7 @@ function Home({ route, navigation }) {
               style={[styles.button, styles.buttonQuiz]}
               onPress={() =>
                 navigation.navigate("Quiz", {
+                  quizTitle: item.title,
                   questions: item.questions,
                   questionNum: 0,
                 })
@@ -127,24 +170,19 @@ function Home({ route, navigation }) {
           );
         }}
       ></FlatList>
-      {/* <Pressable
-        onPress={() => navigation.navigate("Create a Quiz")}
-        style={[styles.button, styles.buttonCreateQuiz]}
-      > */}
-      <Icon
-        reverse
-        raised
-        name="add"
-        color="#134611"
-        size="40"
-        onPress={() => navigation.navigate("Create a Quiz")}
-      ></Icon>
-      {/* </Pressable> */}
+      <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+        <Pressable
+          onPress={() => navigation.navigate("Create a Quiz")}
+          style={styles.iconButton}
+        >
+          <Icon name="add" color="#FFFEFE" size={60}></Icon>
+        </Pressable>
+      </View>
     </View>
   );
 }
 function Quiz({ route, navigation }) {
-  const { questions, questionNum } = route.params;
+  const { quizTitle, questions, questionNum } = route.params;
   const userAnswers = route.params.userAnswers;
   const [curAnswer, setCurAnswer] = useState("");
   let { prompt, type, choices } = questions[questionNum];
@@ -157,12 +195,14 @@ function Quiz({ route, navigation }) {
       navigation.navigate("Quiz", {
         questionNum: nextQuestion,
         questions: questions,
+        quizTitle,
         userAnswers: [...userAnswers, curAnswer],
       });
     } else {
       navigation.navigate("Summary", {
         userAnswers: [...userAnswers, curAnswer],
         questions,
+        quizTitle,
       });
     }
   };
@@ -183,15 +223,68 @@ function Quiz({ route, navigation }) {
   }
   console.log("User answers array:" + userAnswers);
   return (
-    <View>
-      <Text>{prompt}</Text>
-      {questionType}
-      <Button
-        title="submit"
-        onPress={() => {
-          nextQuestion();
-        }}
-      ></Button>
+    <View style={styles.container}>
+      <Text
+        style={[
+          styles.header,
+          {
+            textAlign: "center",
+            marginTop: verticalScale(40),
+            marginBottom: verticalScale(-40),
+          },
+        ]}
+      >
+        {quizTitle}
+      </Text>
+      <View
+        style={[
+          styles.questionContainer,
+          {
+            marginLeft: "auto",
+            marginRight: "auto",
+            marginTop: "auto",
+            marginBottom: "auto",
+            width: "85%",
+            height: "40%",
+          },
+        ]}
+      >
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: 15,
+          }}
+        >
+          <Text style={[styles.header2, { padding: 10 }]}>{prompt}</Text>
+          {questionType}
+          <Pressable
+            style={{
+              backgroundColor: "#134611",
+              borderRadius: 20,
+              padding: 12,
+              elevation: 2,
+              margin: 8,
+            }}
+            onPress={() => {
+              nextQuestion();
+            }}
+          >
+            <Text style={styles.textStyle}>Submit</Text>
+          </Pressable>
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+        <Pressable
+          style={styles.iconButton}
+          onPress={() =>
+            navigation.navigate("Home", { quizDisplay: quizArray })
+          }
+        >
+          <Icon name="home" color="#FFFEFE" size={50}></Icon>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -252,7 +345,7 @@ function MultipleChoice({ choices, handleAnswer }) {
 }
 // summary function intially provided by instrutor, adjusted for different question types
 function Summary({ navigation, route }) {
-  const { userAnswers, questions } = route.params;
+  const { quizTitle, userAnswers, questions } = route.params;
   console.log(questions);
   let calculateCorrect = (userAnswer, answer) => {
     let correct = userAnswer == answer;
@@ -265,10 +358,13 @@ function Summary({ navigation, route }) {
     }
   }
   return (
-    <View>
-      <Text>
-        Your score: {totalScore} / {questions.length}
-      </Text>
+    <View style={styles.container}>
+      <Text style={[styles.header, { textAlign: "center" }]}>{quizTitle}</Text>
+      <View style={styles.questionContainer}>
+        <Text style={styles.header2}>
+          Your score: {totalScore} / {questions.length}
+        </Text>
+      </View>
       <FlatList
         data={questions}
         renderItem={({ item, index }) => {
@@ -280,16 +376,16 @@ function Summary({ navigation, route }) {
           if (item.type == "input") {
             let { prompt } = item;
             return (
-              <View key={index}>
-                <Text>{prompt}</Text>
-                <Text>Your answer: {userSelected}</Text>
+              <View style={styles.questionContainer} key={index}>
+                <Text style={styles.bodyText}>{prompt}</Text>
+                <Text style={styles.header3}>Your answer: {userSelected}</Text>
               </View>
             );
           } else {
             let { prompt, answer, choices } = item;
             return (
-              <View key={index}>
-                <Text>{prompt}</Text>
+              <View style={styles.questionContainer} key={index}>
+                <Text style={styles.bodyText}>{prompt}</Text>
                 {choices.map((value, choiceIndex) => {
                   let correct = false;
                   let userDidSelect = false;
@@ -320,10 +416,16 @@ function Summary({ navigation, route }) {
           }
         }}
       ></FlatList>
-      <Button
-        title="Home"
-        onPress={() => navigation.navigate("Home", { userAnswers: [] })}
-      ></Button>
+      <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+        <Pressable
+          style={styles.iconButton}
+          onPress={() =>
+            navigation.navigate("Home", { quizDisplay: quizArray })
+          }
+        >
+          <Icon name="home" color="#FFFEFE" size={50}></Icon>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -350,6 +452,7 @@ function CreateQuiz({ navigation, route }) {
         title={value}
         checked={selectedIndex2 === index}
         onPress={() => setSelectedIndex2(index)}
+        checkedColor="#3DA35D"
       ></CheckBox>
     );
   });
@@ -360,6 +463,7 @@ function CreateQuiz({ navigation, route }) {
         title={value}
         checked={selectedIndex2 === index}
         onPress={() => setSelectedIndex2(index)}
+        checkedColor="#3DA35D"
       ></CheckBox>
     );
   });
@@ -367,7 +471,7 @@ function CreateQuiz({ navigation, route }) {
     type = "input";
     questionType = (
       <>
-        <Text>Enter Answer:</Text>
+        <Text style={styles.header3}>Enter Answer:</Text>
         <Input placeholder="Answer" onChangeText={setInputAnswer}></Input>
       </>
     );
@@ -380,7 +484,7 @@ function CreateQuiz({ navigation, route }) {
     type = "drop-down";
     questionType = (
       <>
-        <Text>Enter choices:</Text>
+        <Text style={styles.header3}>Enter choices:</Text>
         <Input placeholder="Add a choice" onChangeText={setChoicesText}></Input>
         <Pressable
           style={[styles.button, styles.buttonOpen]}
@@ -391,7 +495,9 @@ function CreateQuiz({ navigation, route }) {
         >
           <Text style={styles.textStyle}>Add choice</Text>
         </Pressable>
-        <Text>Choices: (Please mark which answer is correct)</Text>
+        <Text style={styles.header3}>
+          Choices: (Please mark which answer is correct)
+        </Text>
         {formatDropChoices}
       </>
     );
@@ -405,15 +511,18 @@ function CreateQuiz({ navigation, route }) {
     type = "multiple-choice";
     questionType = (
       <>
-        <Text>Enter choices:</Text>
+        <Text style={styles.header3}>Enter choices:</Text>
         <Input placeholder="Add a choice" onChangeText={setChoicesText}></Input>
-        {formatMultiChoices}
         <Pressable
           style={[styles.button, styles.buttonOpen]}
           onPress={() => setMultiChoices([...multiChoices, choicesText])}
         >
           <Text style={styles.textStyle}>Add choice</Text>
         </Pressable>
+        <Text style={styles.header3}>
+          Choices: (Please mark which answer is correct)
+        </Text>
+        {formatMultiChoices}
       </>
     );
     questionObject = {
@@ -443,30 +552,80 @@ function CreateQuiz({ navigation, route }) {
             }}
           ></FlatList>
           <Text style={styles.bodyText}>Answer: {item.answer}</Text>
+          <Pressable>
+            <Text>Delete</Text>
+          </Pressable>
+          <Pressable>
+            <Text>Edit</Text>
+          </Pressable>
         </View>
       );
     } else {
       return (
         <View style={styles.questionContainer}>
-          <Text style={styles.header3}>Question #{index + 1}</Text>
-          <Text style={[styles.bodyText, { marginTop: 5 }]}>{item.prompt}</Text>
-          <Text style={styles.bodyText}>Answer: {item.answer}</Text>
+          <View
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              justifyContent: "space-between",
+            }}
+          >
+            <View>
+              <Text style={styles.header3}>Question #{index + 1}</Text>
+              <Text style={[styles.bodyText, { marginTop: 5 }]}>
+                {item.prompt}
+              </Text>
+              <Text style={styles.bodyText}>Answer: {item.answer}</Text>
+            </View>
+            <View>
+              <Pressable
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => {
+                  console.log(questions);
+                  console.log(questions[index]);
+                  questions.splice(questions[index], 1);
+                  setQuestions(questions);
+                }}
+              >
+                <Text style={styles.textStyle}>Delete</Text>
+              </Pressable>
+              <Pressable style={[styles.button, styles.buttonClose]}>
+                <Text style={styles.textStyle}>Edit</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      );
+    }
+  };
+  let ifNoQuestions = () => {
+    if (questions.length === 0) {
+      return (
+        <View style={styles.questionContainer}>
+          <Text style={styles.header3}>You currently have no questions</Text>
         </View>
       );
     }
   };
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Create a Quiz</Text>
+      <Text style={[{ textAlign: "center" }, styles.header]}>
+        Create a Quiz
+      </Text>
       <Text style={styles.header2}>Enter quiz title:</Text>
-      <Input placeholder="Title..." onChangeText={setTitle}></Input>
+      <Input
+        style={{ margin: 5 }}
+        placeholder="Title..."
+        onChangeText={setTitle}
+      ></Input>
       <Pressable
         style={styles.buttonOpen}
         onPress={() => setModalVisible(true)}
       >
         <Text style={styles.textStyle}>Add a question</Text>
       </Pressable>
-      <Text style={[styles.header2, { marginTop: 10 }]}>Your questions:</Text>
+      <Text style={styles.header2}>Your questions:</Text>
+      {ifNoQuestions()}
       <FlatList data={questions} renderItem={renderItem}></FlatList>
       <View style={styles.centeredView}>
         <Modal
@@ -479,16 +638,21 @@ function CreateQuiz({ navigation, route }) {
           }}
         >
           <View style={styles.modalView}>
-            <Text style={styles.modalText}>Create a question</Text>
+            <Text style={[styles.modalText, styles.header2]}>
+              Create a question
+            </Text>
             <Input
               placeholder="Question prompt"
               onChangeText={setQuestionPrompt}
             ></Input>
-            <Text style={styles.modalText}>Question type:</Text>
+            <Text style={[styles.modalText, styles.header3]}>
+              Question type:
+            </Text>
             <CheckBox
               checked={selectedIndex === 0}
               onPress={() => setIndex(0)}
               checkedIcon="dot-circle-o"
+              checkedColor="#3DA35D"
               uncheckedIcon="circle-o"
               title="Input"
             />
@@ -496,6 +660,7 @@ function CreateQuiz({ navigation, route }) {
               checked={selectedIndex === 1}
               onPress={() => setIndex(1)}
               checkedIcon="dot-circle-o"
+              checkedColor="#3DA35D"
               uncheckedIcon="circle-o"
               title="Drop Down"
             />
@@ -503,63 +668,142 @@ function CreateQuiz({ navigation, route }) {
               checked={selectedIndex === 2}
               onPress={() => setIndex(2)}
               checkedIcon="dot-circle-o"
+              checkedColor="#3DA35D"
               uncheckedIcon="circle-o"
               title="Multiple Chpice"
             />
             {questionType}
-            <Pressable
-              style={[styles.button, styles.buttonClose]}
-              onPress={() => {
-                setModalVisible(!modalVisible);
-                setQuestions([...questions, questionObject]);
-                console.log(questions);
-                // clear the arrays
-                setDropChoices([]);
-                setMultiChoices([]);
-              }}
+            <View
+              style={[
+                styles.buttonContainer,
+                { marginTop: 10, marginBottom: -10 },
+              ]}
             >
-              <Text style={styles.textStyle}>Save Question</Text>
-            </Pressable>
+              <Pressable
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => {
+                  setModalVisible(!modalVisible);
+                  setQuestions([...questions, questionObject]);
+                  console.log(questions);
+                  // clear the arrays
+                  setDropChoices([]);
+                  setMultiChoices([]);
+                }}
+              >
+                <Text style={styles.textStyle}>Save Question</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => {
+                  setModalVisible(!modalVisible);
+                  // clear the arrays
+                  setDropChoices([]);
+                  setMultiChoices([]);
+                }}
+              >
+                <Text style={styles.textStyle}>Exit</Text>
+              </Pressable>
+            </View>
           </View>
         </Modal>
       </View>
-      <Button
-        title="Save"
-        onPress={() => {
-          let quiz = {
-            title: title,
-            questions: questions,
-          };
-          quizArray.push(quiz);
-          // console.log("quiz just added:" + { quiz });
-          // console.log("quiz array:" + { quizArray });
-          navigation.navigate("Home", { quizDisplay: quizArray });
-        }}
-      ></Button>
+      <View style={[styles.buttonContainer, { marginTop: 10 }]}>
+        <Pressable
+          style={{
+            width: horizontalScale(120),
+            backgroundColor: "#134611",
+            borderRadius: 20,
+            padding: 10,
+            elevation: 2,
+            margin: 10,
+            marginBottom: -40,
+          }}
+          onPress={() => {
+            let quiz = {
+              title: title,
+              questions: questions,
+            };
+            quizArray.push(quiz);
+            // console.log("quiz just added:" + { quiz });
+            // console.log("quiz array:" + { quizArray });
+            navigation.navigate("Home", { quizDisplay: quizArray });
+          }}
+        >
+          <Text style={styles.textStyle}>Save</Text>
+        </Pressable>
+        <Pressable
+          style={styles.iconButton}
+          onPress={() =>
+            navigation.navigate("Home", { quizDisplay: quizArray })
+          }
+        >
+          <Icon name="home" color="#FFFEFE" size={50}></Icon>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   questionContainer: {
     backgroundColor: "#FFFEFE",
     padding: 10,
     margin: 10,
     borderRadius: 20,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   container: {
     borderRadius: 40,
-    marginTop: 45,
+    marginTop: verticalScale(40),
     margin: 20,
     backgroundColor: "#E8FCCF",
-    height: 750,
+    height: verticalScale(720),
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   backgrounColor: {
     backgroundColor: "green",
   },
   buttonQuiz: {
     backgroundColor: "#3DA35D",
-    margin: 10,
+    margin: 20,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  iconButton: {
+    width: horizontalScale(90),
+    height: verticalScale(90),
+    backgroundColor: "#3DA35D",
+    borderRadius: 90,
+    padding: 10,
+    elevation: 2,
+    marginRight: horizontalScale(5),
+    marginBottom: verticalScale(-40),
+    justifyContent: "center",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   buttonCreateQuiz: {
     backgroundColor: "#134611",
@@ -570,11 +814,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   header: {
-    fontSize: 45,
-    fontFamily: "Nunito-Regular",
+    fontSize: 48,
+    fontFamily: "Nunito-Bold",
     color: "#134611",
-    margin: 20,
-    textAlign: "left",
+
+    margin: 35,
   },
   header2: {
     fontSize: 20,
@@ -593,21 +837,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 22,
   },
-  modalView: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 35,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
   button: {
     borderRadius: 20,
     padding: 10,
@@ -618,9 +847,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 10,
     elevation: 2,
+    margin: 8,
+    marginBottom: 20,
   },
   buttonClose: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#134611",
+    borderRadius: 20,
+    padding: 12,
+    elevation: 2,
+    margin: 8,
   },
   bodyText: {
     fontSize: 15,
@@ -640,6 +875,21 @@ const styles = StyleSheet.create({
     textAlign: "left",
     fontSize: 25,
     margin: 40,
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: "#FFFEFE",
+    borderRadius: 20,
+    padding: 35,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   modalText: {
     marginBottom: 15,
