@@ -8,10 +8,12 @@ import {
   StyleSheet,
   Text,
   View,
+  SafeAreaView,
   FlatList,
   Pressable,
   Dimensions,
   Image,
+  Alert,
 } from "react-native";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -128,8 +130,8 @@ function Home({ route, navigation }) {
           gap: 5,
         }}
       >
-        <Text style={styles.header}>Your {"\n"}quizzes:</Text>
-        <Image
+        <Text style={[styles.header, { flexWrap: "wrap" }]}>Your quizzes:</Text>
+        {/* <Image
           style={{
             width: 90,
             height: 102,
@@ -137,9 +139,10 @@ function Home({ route, navigation }) {
             margin: 35,
           }}
           source={require("../appComponents/assets/apple.png")}
-        ></Image>
+        ></Image> */}
       </View>
       <FlatList
+        style={{ height: "40%" }}
         // style={[styles.button, styles.buttonQuiz]}
         data={quizDisplay}
         renderItem={({ item }) => {
@@ -154,7 +157,32 @@ function Home({ route, navigation }) {
                 })
               }
             >
-              <Text style={styles.quizTextStyle}>{item.title}</Text>
+              <View
+                style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+              >
+                <Text style={styles.quizTextStyle}>{item.title}</Text>
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: horizontalScale(-72),
+                  }}
+                >
+                  <Pressable
+                    style={[{ margin: 40 }]}
+                    onPress={() => console.log("pressed")}
+                  >
+                    <Icon name="edit" color="#FFFEFE"></Icon>
+                  </Pressable>
+                  <Pressable
+                    style={[{ margin: 40 }]}
+                    onPress={() => console.log("pressed")}
+                  >
+                    <Icon name="delete" color="#FFFEFE"></Icon>
+                  </Pressable>
+                </View>
+              </View>
               <Text
                 style={{
                   color: "white",
@@ -430,6 +458,7 @@ function Summary({ navigation, route }) {
   );
 }
 
+// create quiz function
 function CreateQuiz({ navigation, route }) {
   cacheFonts([FontAwesome.font]);
   let [title, setTitle] = useState("");
@@ -441,6 +470,7 @@ function CreateQuiz({ navigation, route }) {
   let [multiChoices, setMultiChoices] = useState([]);
   let [inputAnswer, setInputAnswer] = useState("");
   let [choicesText, setChoicesText] = useState("");
+  let [editModal, setEditModal] = useState(false);
   let questionType;
   let type;
   let questionObject;
@@ -532,32 +562,74 @@ function CreateQuiz({ navigation, route }) {
       answer: multiChoices[selectedIndex2],
     };
   }
+  // delete function works.. but app has to re-render so it is slow
+  let handleDelete = (question) => {
+    console.log(question);
+    questions.splice(question, 1);
+    setQuestions(questions);
+  };
+  let replaceIndex;
   let renderItem = ({ item, index }) => {
     // console.log("Returning flatlist...");
     // console.log(item.type);
     if (item.type !== "input") {
       return (
         <View style={styles.questionContainer}>
-          <Text style={styles.header3}>Question #{index + 1}</Text>
-          <Text style={[styles.bodyText, { marginTop: 5 }]}>{item.prompt}</Text>
-          <Text style={styles.bodyText}>Choices:</Text>
-          <FlatList
-            data={item.choices}
-            renderItem={({ item }) => {
-              return (
-                <Text style={[styles.bodyText, { marginLeft: 20 }]}>
-                  {item}
-                </Text>
-              );
+          <View
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              justifyContent: "space-between",
             }}
-          ></FlatList>
-          <Text style={styles.bodyText}>Answer: {item.answer}</Text>
-          <Pressable>
-            <Text>Delete</Text>
-          </Pressable>
-          <Pressable>
-            <Text>Edit</Text>
-          </Pressable>
+          >
+            <View>
+              <Text style={styles.header3}>Question #{index + 1}</Text>
+              <Text style={[styles.bodyText, { marginTop: 5 }]}>
+                {item.prompt}
+              </Text>
+              <Text style={styles.bodyText}>Choices:</Text>
+              <FlatList
+                data={item.choices}
+                renderItem={({ item }) => {
+                  return (
+                    <Text style={[styles.bodyText, { marginLeft: 20 }]}>
+                      {item}
+                    </Text>
+                  );
+                }}
+              ></FlatList>
+              <Text style={styles.bodyText}>Answer: {item.answer}</Text>
+            </View>
+            <View
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: -15,
+                marginLeft: horizontalScale(80),
+              }}
+            >
+              <Pressable
+                onPress={() => {
+                  replaceIndex = index;
+                  setEditModal(true);
+                  setModalVisible(true);
+                  console.log(replaceIndex);
+                  console.log(questions[replaceIndex].prompt);
+                }}
+              >
+                <Icon reverse name="edit" color="#134611" size="18"></Icon>
+              </Pressable>
+              <Pressable
+                style={[styles.button]}
+                onPress={() => {
+                  handleDelete(questions[index]);
+                }}
+              >
+                <Icon reverse name="delete" color="#134611" size="18"></Icon>
+              </Pressable>
+            </View>
+          </View>
         </View>
       );
     } else {
@@ -577,20 +649,33 @@ function CreateQuiz({ navigation, route }) {
               </Text>
               <Text style={styles.bodyText}>Answer: {item.answer}</Text>
             </View>
-            <View>
+            <View
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: -15,
+                marginLeft: horizontalScale(80),
+              }}
+            >
               <Pressable
-                style={[styles.button, styles.buttonClose]}
                 onPress={() => {
-                  console.log(questions);
-                  console.log(questions[index]);
-                  questions.splice(questions[index], 1);
-                  setQuestions(questions);
+                  replaceIndex = index;
+                  setEditModal(true);
+                  setModalVisible(true);
+                  console.log(replaceIndex);
+                  console.log(questions[replaceIndex].prompt);
                 }}
               >
-                <Text style={styles.textStyle}>Delete</Text>
+                <Icon reverse name="edit" color="#134611" size="18"></Icon>
               </Pressable>
-              <Pressable style={[styles.button, styles.buttonClose]}>
-                <Text style={styles.textStyle}>Edit</Text>
+              <Pressable
+                style={[styles.button]}
+                onPress={() => {
+                  handleDelete(questions[index]);
+                }}
+              >
+                <Icon reverse name="delete" color="#134611" size="18"></Icon>
               </Pressable>
             </View>
           </View>
@@ -607,27 +692,11 @@ function CreateQuiz({ navigation, route }) {
       );
     }
   };
-  return (
-    <View style={styles.container}>
-      <Text style={[{ textAlign: "center" }, styles.header]}>
-        Create a Quiz
-      </Text>
-      <Text style={styles.header2}>Enter quiz title:</Text>
-      <Input
-        style={{ margin: 5 }}
-        placeholder="Title..."
-        onChangeText={setTitle}
-      ></Input>
-      <Pressable
-        style={styles.buttonOpen}
-        onPress={() => setModalVisible(true)}
-      >
-        <Text style={styles.textStyle}>Add a question</Text>
-      </Pressable>
-      <Text style={styles.header2}>Your questions:</Text>
-      {ifNoQuestions()}
-      <FlatList data={questions} renderItem={renderItem}></FlatList>
-      <View style={styles.centeredView}>
+  let modalMode;
+
+  if (editModal == false) {
+    modalMode = (
+      <>
         <Modal
           animationType="slide"
           transparent={true}
@@ -682,12 +751,46 @@ function CreateQuiz({ navigation, route }) {
               <Pressable
                 style={[styles.button, styles.buttonClose]}
                 onPress={() => {
-                  setModalVisible(!modalVisible);
-                  setQuestions([...questions, questionObject]);
-                  console.log(questions);
-                  // clear the arrays
-                  setDropChoices([]);
-                  setMultiChoices([]);
+                  if (questionPrompt.length == 0) {
+                    Alert.alert(
+                      "Missing question prompt",
+                      "Please enter a question prompt"
+                    );
+                  } else if (type == undefined) {
+                    Alert.alert(
+                      "Missing question type",
+                      "Please select a question type"
+                    );
+                  } else if (type == "input" && inputAnswer.length == 0) {
+                    Alert.alert("Missing answer", "Please enter an answer");
+                  } else if (type == "drop-down" && dropChoices.length == 0) {
+                    Alert.alert(
+                      "Missing choice options",
+                      "Please enter at least one choice option"
+                    );
+                  } else if (
+                    type == "multiple-choice" &&
+                    multiChoices.length == 0
+                  ) {
+                    Alert.alert(
+                      "Missing choice options",
+                      "Please enter at least one choice option"
+                    );
+                  } else if (type !== "input" && selectedIndex2 == null) {
+                    Alert.alert("Missing answer", "Please select an answer");
+                  } else {
+                    setModalVisible(!modalVisible);
+                    setQuestions([...questions, questionObject]);
+                    // console.log(questions);
+                    // clear the arrays
+                    setDropChoices([]);
+                    setMultiChoices([]);
+                    // clear inputs
+                    setQuestionPrompt("");
+                    setInputAnswer("");
+                    setChoicesText("");
+                    setSelectedIndex2();
+                  }
                 }}
               >
                 <Text style={styles.textStyle}>Save Question</Text>
@@ -706,7 +809,229 @@ function CreateQuiz({ navigation, route }) {
             </View>
           </View>
         </Modal>
-      </View>
+      </>
+    );
+  } else {
+    console.log("Edit modal mode is on...");
+
+    // change questionType
+    if (selectedIndex === 0) {
+      type = "input";
+      questionType = (
+        <>
+          <Text style={styles.header3}>Enter Answer:</Text>
+          <Input placeholder="New answer" onChangeText={setInputAnswer}></Input>
+        </>
+      );
+      questionObject = {
+        prompt: questionPrompt,
+        type: type,
+        answer: inputAnswer,
+      };
+    } else if (selectedIndex === 1) {
+      type = "drop-down";
+      questionType = (
+        <>
+          <Text style={styles.header3}>Enter choices:</Text>
+          <Input
+            placeholder="Add a choice"
+            onChangeText={setChoicesText}
+          ></Input>
+          <Pressable
+            style={[styles.button, styles.buttonOpen]}
+            onPress={() => {
+              setDropChoices([...dropChoices, choicesText]);
+              // console.log(dropChoices);
+            }}
+          >
+            <Text style={styles.textStyle}>Add choice</Text>
+          </Pressable>
+          <Text style={styles.header3}>
+            Choices: (Please mark which answer is correct)
+          </Text>
+          {formatDropChoices}
+        </>
+      );
+      questionObject = {
+        prompt: questionPrompt,
+        type: type,
+        choices: dropChoices,
+        answer: dropChoices[selectedIndex2],
+      };
+    } else if (selectedIndex === 2) {
+      type = "multiple-choice";
+      questionType = (
+        <>
+          <Text style={styles.header3}>Enter choices:</Text>
+          <Input
+            placeholder="Add a choice"
+            onChangeText={setChoicesText}
+          ></Input>
+          <Pressable
+            style={[styles.button, styles.buttonOpen]}
+            onPress={() => setMultiChoices([...multiChoices, choicesText])}
+          >
+            <Text style={styles.textStyle}>Add choice</Text>
+          </Pressable>
+          <Text style={styles.header3}>
+            Choices: (Please mark which answer is correct)
+          </Text>
+          {formatMultiChoices}
+        </>
+      );
+      questionObject = {
+        prompt: questionPrompt,
+        type: type,
+        choices: multiChoices,
+        answer: multiChoices[selectedIndex2],
+      };
+    }
+    modalMode = (
+      <>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => {
+            Alert.alert("Modal has been closed.");
+            setModalVisible(!modalVisible);
+          }}
+        >
+          <View style={styles.modalView}>
+            <Text style={[styles.modalText, styles.header2]}>
+              Edit question
+            </Text>
+            <Input
+              placeholder="New prompt"
+              onChangeText={setQuestionPrompt}
+            ></Input>
+            <Text style={[styles.modalText, styles.header3]}>
+              Question type:
+            </Text>
+            <CheckBox
+              checked={selectedIndex === 0}
+              onPress={() => setIndex(0)}
+              checkedIcon="dot-circle-o"
+              checkedColor="#3DA35D"
+              uncheckedIcon="circle-o"
+              title="Input"
+            />
+            <CheckBox
+              checked={selectedIndex === 1}
+              onPress={() => setIndex(1)}
+              checkedIcon="dot-circle-o"
+              checkedColor="#3DA35D"
+              uncheckedIcon="circle-o"
+              title="Drop Down"
+            />
+            <CheckBox
+              checked={selectedIndex === 2}
+              onPress={() => setIndex(2)}
+              checkedIcon="dot-circle-o"
+              checkedColor="#3DA35D"
+              uncheckedIcon="circle-o"
+              title="Multiple Chpice"
+            />
+            {questionType}
+            <View
+              style={[
+                styles.buttonContainer,
+                { marginTop: 10, marginBottom: -10 },
+              ]}
+            >
+              <Pressable
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => {
+                  if (questionPrompt.length == 0) {
+                    Alert.alert(
+                      "Missing question prompt",
+                      "Please enter a question prompt"
+                    );
+                  } else if (type == undefined) {
+                    Alert.alert(
+                      "Missing question type",
+                      "Please select a question type"
+                    );
+                  } else if (type == "input" && inputAnswer.length == 0) {
+                    Alert.alert("Missing answer", "Please enter an answer");
+                  } else if (type == "drop-down" && dropChoices.length == 0) {
+                    Alert.alert(
+                      "Missing choice options",
+                      "Please enter at least one choice option"
+                    );
+                  } else if (
+                    type == "multiple-choice" &&
+                    multiChoices.length == 0
+                  ) {
+                    Alert.alert(
+                      "Missing choice options",
+                      "Please enter at least one choice option"
+                    );
+                  } else if (type !== "input" && selectedIndex2 == null) {
+                    Alert.alert("Missing answer", "Please select an answer");
+                  } else {
+                    setModalVisible(!modalVisible);
+                    // setQuestions([...questions, questionObject]);
+                    // console.log(questions);
+                    console.log("questions before splice" + questions);
+                    questions.splice(replaceIndex, 1, questionObject);
+                    console.log("questions after splice" + questions);
+                    setQuestions(questions);
+                    // clear the arrays
+                    setDropChoices([]);
+                    setMultiChoices([]);
+                    // clear inputs
+                    setQuestionPrompt("");
+                    setInputAnswer("");
+                    setChoicesText("");
+                    setSelectedIndex2();
+                  }
+                }}
+              >
+                <Text style={styles.textStyle}>Change Question</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => {
+                  setModalVisible(!modalVisible);
+                  // clear the arrays
+                  setDropChoices([]);
+                  setMultiChoices([]);
+                }}
+              >
+                <Text style={styles.textStyle}>Exit</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </>
+    );
+  }
+  // Create quiz return starts here
+  return (
+    <View style={styles.container}>
+      <Text style={[{ textAlign: "center" }, styles.header]}>
+        Create a Quiz
+      </Text>
+      <Text style={styles.header2}>Enter quiz title:</Text>
+      <Input
+        style={{ margin: 5 }}
+        placeholder="Title..."
+        onChangeText={setTitle}
+      ></Input>
+      <Pressable
+        style={styles.buttonOpen}
+        onPress={() => {
+          setEditModal(false);
+          setModalVisible(true);
+        }}
+      >
+        <Text style={styles.textStyle}>Add a question</Text>
+      </Pressable>
+      <Text style={styles.header2}>Your questions:</Text>
+      {ifNoQuestions()}
+      <FlatList data={questions} renderItem={renderItem}></FlatList>
+      <View style={styles.centeredView}>{modalMode}</View>
       <View style={[styles.buttonContainer, { marginTop: 10 }]}>
         <Pressable
           style={{
@@ -719,14 +1044,26 @@ function CreateQuiz({ navigation, route }) {
             marginBottom: -40,
           }}
           onPress={() => {
-            let quiz = {
-              title: title,
-              questions: questions,
-            };
-            quizArray.push(quiz);
-            // console.log("quiz just added:" + { quiz });
-            // console.log("quiz array:" + { quizArray });
-            navigation.navigate("Home", { quizDisplay: quizArray });
+            if (title.length == 0) {
+              Alert.alert(
+                "Missing quiz title",
+                "Quiz must contain a title to save"
+              );
+            } else if (questions.length == 0) {
+              Alert.alert(
+                "Missing question",
+                "Quiz must contain at least one question to save"
+              );
+            } else {
+              let quiz = {
+                title: title,
+                questions: questions,
+              };
+              quizArray.push(quiz);
+              // console.log("quiz just added:" + { quiz });
+              // console.log("quiz array:" + { quizArray });
+              navigation.navigate("Home", { quizDisplay: quizArray });
+            }
           }}
         >
           <Text style={styles.textStyle}>Save</Text>
