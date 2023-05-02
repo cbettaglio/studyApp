@@ -1,0 +1,9 @@
+{
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "lang": "en",
+  "name": "lab10",
+  "short_name": "lab10",
+  "start_url": "/?utm_source=web_app_manifest",
+  "orientation": "portrait"
+}

@@ -1,0 +1,30 @@
+{
+  "files": {
+    "main.js": "/studyApp/static/js/main.abc3de53.js",
+    "static/js/823.a0efd2ed.js": "/studyApp/static/js/823.a0efd2ed.js",
+    "static/media/MaterialIcons.ttf": "/studyApp/static/media/MaterialIcons.120b4c7bbd155bd0a04d.ttf",
+    "static/media/FontAwesome.ttf": "/studyApp/static/media/FontAwesome.1e59d2330b4c6deb84b3.ttf",
+    "static/media/Nunito-Regular.ttf": "/studyApp/static/media/Nunito-Regular.99a3b019e7727ac19479.ttf",
+    "static/media/Nunito-Bold.ttf": "/studyApp/static/media/Nunito-Bold.69cab6aafa5915640e72.ttf",
+    "static/media/tick.png": "/studyApp/static/media/tick.32cb45231ee117d499e2.png",
+    "static/media/arrow-up.png": "/studyApp/static/media/arrow-up.0b0d1af9a5b464b93fde.png",
+    "static/media/close.png": "/studyApp/static/media/close.b65df71afd6c8e422619.png",
+    "static/media/arrow-down.png": "/studyApp/static/media/arrow-down.772a5382a31866c9198e.png",
+    "favicon.ico": "/studyApp/favicon.ico",
+    "index.html": "/studyApp/index.html",
+    "static/media/rocket.png": "/studyApp/static/media/rocket.d2f3bf41d5e4515c39a9.png",
+    "static/media/bell.png": "/studyApp/static/media/bell.cf04af27d6a651c4b904.png",
+    "favicon-32.png": "/studyApp/favicon-32.png",
+    "static/media/star.png": "/studyApp/static/media/star.69c7138684828d68fe5a.png",
+    "static/media/heart.png": "/studyApp/static/media/heart.23b5c2c0eb77d50ff1b4.png",
+    "favicon-16.png": "/studyApp/favicon-16.png",
+    "serve.json": "/studyApp/serve.json",
+    "manifest.json": "/studyApp/manifest.json",
+    "main.abc3de53.js.map": "/studyApp/static/js/main.abc3de53.js.map",
+    "823.a0efd2ed.js.map": "/studyApp/static/js/823.a0efd2ed.js.map"
+  },
+  "entrypoints": [
+    "static/js/823.a0efd2ed.js",
+    "static/js/main.abc3de53.js"
+  ]
+}
