@@ -1,19 +1,21 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import DropDownPicker from "react-native-dropdown-picker";
 import {
   StyleSheet,
   Text,
   View,
   SafeAreaView,
+  Platform,
   FlatList,
   Pressable,
   Dimensions,
   Image,
   Alert,
+  ScrollView,
 } from "react-native";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -21,6 +23,9 @@ import { Button, Input, CheckBox, Icon, ListItem } from "@rneui/themed";
 import { ButtonGroup } from "@rneui/base";
 import Modal from "react-native-modal";
 
+const INPUT = 0;
+const DROPDOWN = 1;
+const MULTIPLECHOICE = 2;
 // Stack screens
 const Stack = createNativeStackNavigator();
 // creater new theme
@@ -28,9 +33,6 @@ const navTheme = DefaultTheme;
 navTheme.colors.background = "#FFFEFE";
 // import fonts
 SplashScreen.preventAutoHideAsync();
-async function cacheFonts(fonts) {
-  return fonts.map(async (font) => await Font.loadAsync);
-}
 
 // functions for creating a responsive design
 // src code: https://medium.com/simform-engineering/create-responsive-design-in-react-native-f84522a44365
@@ -46,29 +48,41 @@ const verticalScale = (size) => (height / guidelineBaseHeight) * size;
 let quizArray = [
   {
     title: "Default",
+    quizKey: 0,
     questions: [
       {
         prompt: "This is an input question",
-        type: "input",
+        type: INPUT,
         answer: "Input",
+        key: 0,
       },
       {
         prompt: "This is a dropdown question",
-        type: "drop-down",
+        type: DROPDOWN,
         choices: ["choice1", "choice2", "choice3"],
         answer: "choice1",
+        key: 1,
       },
       {
         prompt: "This is a multiple choice question",
-        type: "multiple-choice",
+        type: MULTIPLECHOICE,
         choices: ["choice1", "choice2", "choice3"],
         answer: "choice2",
+        key: 2,
       },
     ],
   },
 ];
 export default function App() {
-  cacheFonts([FontAwesome.font]);
+  let [, setLoaded] = useState(false);
+  let cacheFonts = (fonts) => {
+    return Promise.all(
+      fonts.map(async (font) => await Font.loadAsync(font))
+    ).then(() => setLoaded(true));
+  };
+  useEffect(() => {
+    cacheFonts([FontAwesome.font, MaterialIcons.font]);
+  }, []);
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator initialRouteName="Home">
@@ -119,6 +133,10 @@ function Home({ route, navigation }) {
   }
   // displays quizzes to home page
   const { quizDisplay } = route.params;
+  // const [quizzes, setQuizzes] = useState(quizDisplay);
+  // delete a quiz
+  // console.log(quizzes);
+
   return (
     <View style={[styles.container]} onLayout={onLayoutRootView}>
       <View
@@ -130,22 +148,13 @@ function Home({ route, navigation }) {
           gap: 5,
         }}
       >
-        <Text style={[styles.header, { flexWrap: "wrap" }]}>Your quizzes:</Text>
-        {/* <Image
-          style={{
-            width: 90,
-            height: 102,
-            marginLeft: horizontalScale(-15),
-            margin: 35,
-          }}
-          source={require("../appComponents/assets/apple.png")}
-        ></Image> */}
+        <Text style={[styles.header]}>Your quizzes:</Text>
       </View>
       <FlatList
         style={{ height: "40%" }}
         // style={[styles.button, styles.buttonQuiz]}
         data={quizDisplay}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           return (
             <Pressable
               style={[styles.button, styles.buttonQuiz]}
@@ -158,10 +167,14 @@ function Home({ route, navigation }) {
               }
             >
               <View
-                style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
               >
                 <Text style={styles.quizTextStyle}>{item.title}</Text>
-                <View
+                {/* <View
                   style={{
                     flex: 1,
                     flexDirection: "row",
@@ -171,17 +184,34 @@ function Home({ route, navigation }) {
                 >
                   <Pressable
                     style={[{ margin: 40 }]}
-                    onPress={() => console.log("pressed")}
+                    onPress={() => {
+                      navigation.navigate("EditQuiz", {
+                        title: item.title,
+                        quizKey: item.quizKey,
+                        questions: item.questions,
+                      });
+                    }}
                   >
-                    <Icon name="edit" color="#FFFEFE"></Icon>
+                    <MaterialIcons name="edit" color="#FFFEFE"></MaterialIcons>
                   </Pressable>
                   <Pressable
                     style={[{ margin: 40 }]}
-                    onPress={() => console.log("pressed")}
+                    onPress={() => {
+                      let handleDelete = (quiz) => {
+                        let newQuizArray = quizArray.filter(
+                          (q) => q.quizKey !== quiz.quizKey
+                        );
+                        setQuizzes(newQuizArray);
+                      };
+                      handleDelete(item);
+                    }}
                   >
-                    <Icon name="delete" color="#FFFEFE"></Icon>
+                    <MaterialIcons
+                      name="delete"
+                      color="#FFFEFE"
+                    ></MaterialIcons>
                   </Pressable>
-                </View>
+                </View> */}
               </View>
               <Text
                 style={{
@@ -203,7 +233,7 @@ function Home({ route, navigation }) {
           onPress={() => navigation.navigate("Create a Quiz")}
           style={styles.iconButton}
         >
-          <Icon name="add" color="#FFFEFE" size={60}></Icon>
+          <MaterialIcons name="add" color="#FFFEFE" size={60}></MaterialIcons>
         </Pressable>
       </View>
     </View>
@@ -213,7 +243,9 @@ function Quiz({ route, navigation }) {
   const { quizTitle, questions, questionNum } = route.params;
   const userAnswers = route.params.userAnswers;
   const [curAnswer, setCurAnswer] = useState("");
+  console.log(questions);
   let { prompt, type, choices } = questions[questionNum];
+  console.log(prompt, type, choices);
   let nextQuestion = () => {
     let nextQuestion = questionNum + 1;
     if (nextQuestion < questions.length) {
@@ -235,9 +267,10 @@ function Quiz({ route, navigation }) {
     }
   };
   let questionType;
-  if (type === "input") {
+  if (type === INPUT) {
+    console.log("input");
     questionType = <InputText handleAnswer={setCurAnswer}></InputText>;
-  } else if (type === "drop-down") {
+  } else if (type === DROPDOWN) {
     questionType = (
       <DropDown choices={choices} handleAnswer={setCurAnswer}></DropDown>
     );
@@ -310,7 +343,7 @@ function Quiz({ route, navigation }) {
             navigation.navigate("Home", { quizDisplay: quizArray })
           }
         >
-          <Icon name="home" color="#FFFEFE" size={50}></Icon>
+          <MaterialIcons name="home" color="#FFFEFE" size={55}></MaterialIcons>
         </Pressable>
       </View>
     </View>
@@ -397,16 +430,27 @@ function Summary({ navigation, route }) {
         data={questions}
         renderItem={({ item, index }) => {
           console.log(item);
-          let userSelected = userAnswers[index];
-          let userCorrect = calculateCorrect(userSelected, item.answer);
-
-          console.log(item.type);
-          if (item.type == "input") {
+          let userSelected =
+            item.type !== INPUT
+              ? item.choices.indexOf(userAnswers[index])
+              : userAnswers[index];
+          console.log(userSelected);
+          let userCorrect =
+            item.type !== INPUT
+              ? calculateCorrect(
+                  userSelected,
+                  item.choices.indexOf(item.answer)
+                )
+              : userSelected === item.answer;
+          if (item.type == INPUT) {
             let { prompt } = item;
             return (
               <View style={styles.questionContainer} key={index}>
                 <Text style={styles.bodyText}>{prompt}</Text>
-                <Text style={styles.header3}>Your answer: {userSelected}</Text>
+                <Text style={styles.bodyText}>Your answer: {userSelected}</Text>
+                <Text style={styles.header3}>
+                  Correct answer: {item.answer}
+                </Text>
               </View>
             );
           } else {
@@ -423,17 +467,12 @@ function Summary({ navigation, route }) {
                     <CheckBox
                       containerStyle={{
                         backgroundColor: userDidSelect
-                          ? correct == true
+                          ? correct
                             ? "lightgreen"
                             : "red"
                           : undefined,
                       }}
-                      checked={userDidSelect == correct}
-                      textStyle={{
-                        textDecorationLine: correct
-                          ? undefined
-                          : "line-through",
-                      }}
+                      checked={choices.indexOf(answer) === choiceIndex}
                       key={value}
                       title={value}
                     ></CheckBox>
@@ -451,19 +490,16 @@ function Summary({ navigation, route }) {
             navigation.navigate("Home", { quizDisplay: quizArray })
           }
         >
-          <Icon name="home" color="#FFFEFE" size={50}></Icon>
+          <MaterialIcons name="home" color="#FFFEFE" size={50}></MaterialIcons>
         </Pressable>
       </View>
     </View>
   );
 }
-
 // create quiz function
 function CreateQuiz({ navigation, route }) {
-  cacheFonts([FontAwesome.font]);
   let [title, setTitle] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedIndex, setIndex] = useState();
   const [questions, setQuestions] = useState([]);
   let [questionPrompt, setQuestionPrompt] = useState("");
   let [dropChoices, setDropChoices] = useState([]);
@@ -471,10 +507,22 @@ function CreateQuiz({ navigation, route }) {
   let [inputAnswer, setInputAnswer] = useState("");
   let [choicesText, setChoicesText] = useState("");
   let [editModal, setEditModal] = useState(false);
+  let [quesIndex, setQuesIndex] = useState();
   let questionType;
-  let type;
   let questionObject;
   let [selectedIndex2, setSelectedIndex2] = useState();
+  let modalMode;
+  let [error, setError] = useState("");
+  let [errorAnswer, setErrorAnswer] = useState("");
+  // dropdown variables
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(null);
+  const [quesType, setQuesType] = useState(null);
+  const [items, setItems] = useState([
+    { label: "Input", value: INPUT },
+    { label: "Drop Down", value: DROPDOWN },
+    { label: "Multiple Choice", value: MULTIPLECHOICE },
+  ]);
   let formatDropChoices = dropChoices.map((value, index) => {
     return (
       <CheckBox
@@ -497,8 +545,7 @@ function CreateQuiz({ navigation, route }) {
       ></CheckBox>
     );
   });
-  if (selectedIndex === 0) {
-    type = "input";
+  if (quesType === INPUT) {
     questionType = (
       <>
         <Text style={styles.header3}>Enter Answer:</Text>
@@ -507,11 +554,11 @@ function CreateQuiz({ navigation, route }) {
     );
     questionObject = {
       prompt: questionPrompt,
-      type: type,
+      key: questions.length == 0 ? 0 : questions[questions.length - 1].key + 1,
+      type: quesType,
       answer: inputAnswer,
     };
-  } else if (selectedIndex === 1) {
-    type = "drop-down";
+  } else if (quesType === DROPDOWN) {
     questionType = (
       <>
         <Text style={styles.header3}>Enter choices:</Text>
@@ -528,17 +575,19 @@ function CreateQuiz({ navigation, route }) {
         <Text style={styles.header3}>
           Choices: (Please mark which answer is correct)
         </Text>
-        {formatDropChoices}
+        <ScrollView style={{ height: height / 6, width: "100%" }}>
+          {formatDropChoices}
+        </ScrollView>
       </>
     );
     questionObject = {
       prompt: questionPrompt,
-      type: type,
+      key: questions.length == 0 ? 0 : questions[questions.length - 1].key + 1,
+      type: quesType,
       choices: dropChoices,
       answer: dropChoices[selectedIndex2],
     };
-  } else if (selectedIndex === 2) {
-    type = "multiple-choice";
+  } else if (quesType == MULTIPLECHOICE) {
     questionType = (
       <>
         <Text style={styles.header3}>Enter choices:</Text>
@@ -552,27 +601,31 @@ function CreateQuiz({ navigation, route }) {
         <Text style={styles.header3}>
           Choices: (Please mark which answer is correct)
         </Text>
-        {formatMultiChoices}
+        <ScrollView style={{ height: height / 6, width: "100%" }}>
+          {formatMultiChoices}
+        </ScrollView>
       </>
     );
     questionObject = {
       prompt: questionPrompt,
-      type: type,
+      key: questions.length == 0 ? 0 : questions[questions.length - 1].key + 1,
+      type: quesType,
       choices: multiChoices,
       answer: multiChoices[selectedIndex2],
     };
   }
-  // delete function works.. but app has to re-render so it is slow
   let handleDelete = (question) => {
     console.log(question);
-    questions.splice(question, 1);
-    setQuestions(questions);
+    let createNewQuestions = questions.filter(
+      (q) => q.prompt !== question.prompt
+    );
+    setQuestions(createNewQuestions);
   };
-  let replaceIndex;
+
   let renderItem = ({ item, index }) => {
     // console.log("Returning flatlist...");
     // console.log(item.type);
-    if (item.type !== "input") {
+    if (item.type !== INPUT) {
       return (
         <View style={styles.questionContainer}>
           <View
@@ -592,7 +645,10 @@ function CreateQuiz({ navigation, route }) {
                 data={item.choices}
                 renderItem={({ item }) => {
                   return (
-                    <Text style={[styles.bodyText, { marginLeft: 20 }]}>
+                    <Text
+                      key={item.prompt}
+                      style={[styles.bodyText, { marginLeft: 20 }]}
+                    >
                       {item}
                     </Text>
                   );
@@ -605,20 +661,32 @@ function CreateQuiz({ navigation, route }) {
                 flex: 1,
                 flexDirection: "row",
                 alignItems: "center",
-                gap: -15,
+                gap: 0,
                 marginLeft: horizontalScale(80),
               }}
             >
               <Pressable
                 onPress={() => {
-                  replaceIndex = index;
+                  setQuesIndex(item.key);
+                  setQuestionPrompt(item.prompt);
+                  setQuesType(item.type);
+                  setValue(item.type);
+                  if (item.type == DROPDOWN) {
+                    setDropChoices(item.choices);
+                  } else {
+                    setMultiChoices(item.choices);
+                  }
+                  setSelectedIndex2(item.choices.indexOf(item.answer));
                   setEditModal(true);
                   setModalVisible(true);
-                  console.log(replaceIndex);
-                  console.log(questions[replaceIndex].prompt);
                 }}
               >
-                <Icon reverse name="edit" color="#134611" size="18"></Icon>
+                <MaterialIcons
+                  reverse
+                  name="edit"
+                  color="#134611"
+                  size={18}
+                ></MaterialIcons>
               </Pressable>
               <Pressable
                 style={[styles.button]}
@@ -626,7 +694,12 @@ function CreateQuiz({ navigation, route }) {
                   handleDelete(questions[index]);
                 }}
               >
-                <Icon reverse name="delete" color="#134611" size="18"></Icon>
+                <MaterialIcons
+                  reverse
+                  name="delete"
+                  color="#134611"
+                  size={18}
+                ></MaterialIcons>
               </Pressable>
             </View>
           </View>
@@ -650,24 +723,33 @@ function CreateQuiz({ navigation, route }) {
               <Text style={styles.bodyText}>Answer: {item.answer}</Text>
             </View>
             <View
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: -15,
-                marginLeft: horizontalScale(80),
-              }}
+              style={[
+                {
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 0,
+                  marginLeft: horizontalScale(80),
+                },
+              ]}
             >
               <Pressable
                 onPress={() => {
-                  replaceIndex = index;
+                  setQuesIndex(item.key);
+                  setQuestionPrompt(item.prompt);
+                  setQuesType(item.type);
+                  setInputAnswer(item.answer);
                   setEditModal(true);
                   setModalVisible(true);
-                  console.log(replaceIndex);
-                  console.log(questions[replaceIndex].prompt);
+                  setValue(item.type);
                 }}
               >
-                <Icon reverse name="edit" color="#134611" size="18"></Icon>
+                <MaterialIcons
+                  reverse
+                  name="edit"
+                  color="#134611"
+                  size={18}
+                ></MaterialIcons>
               </Pressable>
               <Pressable
                 style={[styles.button]}
@@ -675,7 +757,12 @@ function CreateQuiz({ navigation, route }) {
                   handleDelete(questions[index]);
                 }}
               >
-                <Icon reverse name="delete" color="#134611" size="18"></Icon>
+                <MaterialIcons
+                  reverse
+                  name="delete"
+                  color="#134611"
+                  size={18}
+                ></MaterialIcons>
               </Pressable>
             </View>
           </View>
@@ -692,7 +779,6 @@ function CreateQuiz({ navigation, route }) {
       );
     }
   };
-  let modalMode;
 
   if (editModal == false) {
     modalMode = (
@@ -713,34 +799,23 @@ function CreateQuiz({ navigation, route }) {
             <Input
               placeholder="Question prompt"
               onChangeText={setQuestionPrompt}
+              errorMessage={error}
             ></Input>
             <Text style={[styles.modalText, styles.header3]}>
               Question type:
             </Text>
-            <CheckBox
-              checked={selectedIndex === 0}
-              onPress={() => setIndex(0)}
-              checkedIcon="dot-circle-o"
-              checkedColor="#3DA35D"
-              uncheckedIcon="circle-o"
-              title="Input"
+            <DropDownPicker
+              open={open}
+              value={value}
+              items={items}
+              setOpen={setOpen}
+              setValue={(value) => {
+                setValue(value);
+                setQuesType(value);
+              }}
+              setItems={setItems}
             />
-            <CheckBox
-              checked={selectedIndex === 1}
-              onPress={() => setIndex(1)}
-              checkedIcon="dot-circle-o"
-              checkedColor="#3DA35D"
-              uncheckedIcon="circle-o"
-              title="Drop Down"
-            />
-            <CheckBox
-              checked={selectedIndex === 2}
-              onPress={() => setIndex(2)}
-              checkedIcon="dot-circle-o"
-              checkedColor="#3DA35D"
-              uncheckedIcon="circle-o"
-              title="Multiple Chpice"
-            />
+
             {questionType}
             <View
               style={[
@@ -751,34 +826,18 @@ function CreateQuiz({ navigation, route }) {
               <Pressable
                 style={[styles.button, styles.buttonClose]}
                 onPress={() => {
-                  if (questionPrompt.length == 0) {
-                    Alert.alert(
-                      "Missing question prompt",
-                      "Please enter a question prompt"
-                    );
-                  } else if (type == undefined) {
-                    Alert.alert(
-                      "Missing question type",
-                      "Please select a question type"
-                    );
-                  } else if (type == "input" && inputAnswer.length == 0) {
-                    Alert.alert("Missing answer", "Please enter an answer");
-                  } else if (type == "drop-down" && dropChoices.length == 0) {
-                    Alert.alert(
-                      "Missing choice options",
-                      "Please enter at least one choice option"
-                    );
-                  } else if (
-                    type == "multiple-choice" &&
-                    multiChoices.length == 0
-                  ) {
-                    Alert.alert(
-                      "Missing choice options",
-                      "Please enter at least one choice option"
-                    );
-                  } else if (type !== "input" && selectedIndex2 == null) {
-                    Alert.alert("Missing answer", "Please select an answer");
+                  if (value == null || questionPrompt.length == 0) {
+                    setError("All fields must be entered");
+                    // } else if (quesType == INPUT) {
+                    //   if (inputAnswer.length == 0)
+                    //     console.log("input is still zero");
+                    //   setError("All fields must be entered");
+                    //   // } else if (value == DROPDOWN && dropChoices.length == 0) {
+                    //   //   setError("All fields must be entered");
                   } else {
+                    setError("");
+                    setErrorAnswer("");
+                    error = false;
                     setModalVisible(!modalVisible);
                     setQuestions([...questions, questionObject]);
                     // console.log(questions);
@@ -789,7 +848,9 @@ function CreateQuiz({ navigation, route }) {
                     setQuestionPrompt("");
                     setInputAnswer("");
                     setChoicesText("");
+                    setQuesType();
                     setSelectedIndex2();
+                    setValue(null);
                   }
                 }}
               >
@@ -802,6 +863,13 @@ function CreateQuiz({ navigation, route }) {
                   // clear the arrays
                   setDropChoices([]);
                   setMultiChoices([]);
+                  // clear inputs
+                  setQuestionPrompt("");
+                  setInputAnswer("");
+                  setChoicesText("");
+                  setQuesType();
+                  setSelectedIndex2();
+                  setValue(null);
                 }}
               >
                 <Text style={styles.textStyle}>Exit</Text>
@@ -815,21 +883,19 @@ function CreateQuiz({ navigation, route }) {
     console.log("Edit modal mode is on...");
 
     // change questionType
-    if (selectedIndex === 0) {
-      type = "input";
+    if (quesType == INPUT) {
       questionType = (
         <>
           <Text style={styles.header3}>Enter Answer:</Text>
-          <Input placeholder="New answer" onChangeText={setInputAnswer}></Input>
+          <Input value={inputAnswer} onChangeText={setInputAnswer}></Input>
         </>
       );
       questionObject = {
         prompt: questionPrompt,
-        type: type,
+        type: quesType,
         answer: inputAnswer,
       };
-    } else if (selectedIndex === 1) {
-      type = "drop-down";
+    } else if (quesType == DROPDOWN) {
       questionType = (
         <>
           <Text style={styles.header3}>Enter choices:</Text>
@@ -849,16 +915,18 @@ function CreateQuiz({ navigation, route }) {
           <Text style={styles.header3}>
             Choices: (Please mark which answer is correct)
           </Text>
-          {formatDropChoices}
+          <ScrollView style={{ height: height / 6, width: "100%" }}>
+            {formatDropChoices}
+          </ScrollView>
         </>
       );
       questionObject = {
         prompt: questionPrompt,
-        type: type,
+        type: quesType,
         choices: dropChoices,
         answer: dropChoices[selectedIndex2],
       };
-    } else if (selectedIndex === 2) {
+    } else if (quesType == MULTIPLECHOICE) {
       type = "multiple-choice";
       questionType = (
         <>
@@ -876,12 +944,14 @@ function CreateQuiz({ navigation, route }) {
           <Text style={styles.header3}>
             Choices: (Please mark which answer is correct)
           </Text>
-          {formatMultiChoices}
+          <ScrollView style={{ height: height / 6, width: "100%" }}>
+            {formatMultiChoices}
+          </ScrollView>
         </>
       );
       questionObject = {
         prompt: questionPrompt,
-        type: type,
+        type: quesType,
         choices: multiChoices,
         answer: multiChoices[selectedIndex2],
       };
@@ -902,35 +972,22 @@ function CreateQuiz({ navigation, route }) {
               Edit question
             </Text>
             <Input
-              placeholder="New prompt"
+              value={questionPrompt}
               onChangeText={setQuestionPrompt}
             ></Input>
             <Text style={[styles.modalText, styles.header3]}>
               Question type:
             </Text>
-            <CheckBox
-              checked={selectedIndex === 0}
-              onPress={() => setIndex(0)}
-              checkedIcon="dot-circle-o"
-              checkedColor="#3DA35D"
-              uncheckedIcon="circle-o"
-              title="Input"
-            />
-            <CheckBox
-              checked={selectedIndex === 1}
-              onPress={() => setIndex(1)}
-              checkedIcon="dot-circle-o"
-              checkedColor="#3DA35D"
-              uncheckedIcon="circle-o"
-              title="Drop Down"
-            />
-            <CheckBox
-              checked={selectedIndex === 2}
-              onPress={() => setIndex(2)}
-              checkedIcon="dot-circle-o"
-              checkedColor="#3DA35D"
-              uncheckedIcon="circle-o"
-              title="Multiple Chpice"
+            <DropDownPicker
+              open={open}
+              value={value}
+              items={items}
+              setOpen={setOpen}
+              setValue={(value) => {
+                setValue(value);
+                setQuesType(value);
+              }}
+              setItems={setItems}
             />
             {questionType}
             <View
@@ -942,50 +999,42 @@ function CreateQuiz({ navigation, route }) {
               <Pressable
                 style={[styles.button, styles.buttonClose]}
                 onPress={() => {
-                  if (questionPrompt.length == 0) {
-                    Alert.alert(
-                      "Missing question prompt",
-                      "Please enter a question prompt"
-                    );
-                  } else if (type == undefined) {
-                    Alert.alert(
-                      "Missing question type",
-                      "Please select a question type"
-                    );
-                  } else if (type == "input" && inputAnswer.length == 0) {
-                    Alert.alert("Missing answer", "Please enter an answer");
-                  } else if (type == "drop-down" && dropChoices.length == 0) {
-                    Alert.alert(
-                      "Missing choice options",
-                      "Please enter at least one choice option"
-                    );
-                  } else if (
-                    type == "multiple-choice" &&
-                    multiChoices.length == 0
-                  ) {
-                    Alert.alert(
-                      "Missing choice options",
-                      "Please enter at least one choice option"
-                    );
-                  } else if (type !== "input" && selectedIndex2 == null) {
-                    Alert.alert("Missing answer", "Please select an answer");
+                  let newQuestionObj;
+                  if (quesType == INPUT) {
+                    newQuestionObj = {
+                      prompt: questionPrompt,
+                      key: quesIndex,
+                      type: quesType,
+                      answer: inputAnswer,
+                    };
                   } else {
-                    setModalVisible(!modalVisible);
-                    // setQuestions([...questions, questionObject]);
-                    // console.log(questions);
-                    console.log("questions before splice" + questions);
-                    questions.splice(replaceIndex, 1, questionObject);
-                    console.log("questions after splice" + questions);
-                    setQuestions(questions);
-                    // clear the arrays
-                    setDropChoices([]);
-                    setMultiChoices([]);
-                    // clear inputs
-                    setQuestionPrompt("");
-                    setInputAnswer("");
-                    setChoicesText("");
-                    setSelectedIndex2();
+                    newQuestionObj = {
+                      prompt: questionPrompt,
+                      key: quesIndex,
+                      type: quesType,
+                      choices:
+                        quesType == DROPDOWN ? dropChoices : multiChoices,
+                      answer:
+                        quesType == DROPDOWN
+                          ? dropChoices[selectedIndex2]
+                          : multiChoices[selectedIndex2],
+                    };
                   }
+                  questions.splice(quesIndex, 1, newQuestionObj);
+                  console.log(questions);
+                  setModalVisible(!modalVisible);
+                  console.log(newQuestionObj);
+
+                  // clear the arrays
+                  setDropChoices([]);
+                  setMultiChoices([]);
+                  // clear inputs
+                  setQuestionPrompt("");
+                  setInputAnswer("");
+                  setChoicesText("");
+                  setSelectedIndex2();
+                  setQuesType();
+                  setValue(null);
                 }}
               >
                 <Text style={styles.textStyle}>Change Question</Text>
@@ -995,8 +1044,16 @@ function CreateQuiz({ navigation, route }) {
                 onPress={() => {
                   setModalVisible(!modalVisible);
                   // clear the arrays
+                  // clear the arrays
                   setDropChoices([]);
                   setMultiChoices([]);
+                  // clear inputs
+                  setQuestionPrompt("");
+                  setInputAnswer("");
+                  setChoicesText("");
+                  setSelectedIndex2();
+                  setQuesType();
+                  setValue(null);
                 }}
               >
                 <Text style={styles.textStyle}>Exit</Text>
@@ -1044,26 +1101,18 @@ function CreateQuiz({ navigation, route }) {
             marginBottom: -40,
           }}
           onPress={() => {
-            if (title.length == 0) {
-              Alert.alert(
-                "Missing quiz title",
-                "Quiz must contain a title to save"
-              );
-            } else if (questions.length == 0) {
-              Alert.alert(
-                "Missing question",
-                "Quiz must contain at least one question to save"
-              );
-            } else {
-              let quiz = {
-                title: title,
-                questions: questions,
-              };
-              quizArray.push(quiz);
-              // console.log("quiz just added:" + { quiz });
-              // console.log("quiz array:" + { quizArray });
-              navigation.navigate("Home", { quizDisplay: quizArray });
-            }
+            console.log(quizArray[quizArray.length - 1]);
+            let quiz = {
+              title: title,
+              quizKey:
+                quizArray.length == 0
+                  ? 0
+                  : quizArray[quizArray.length - 1].quizKey + 1,
+              questions: questions,
+            };
+
+            quizArray.push(quiz);
+            navigation.navigate("Home", { quizDisplay: quizArray });
           }}
         >
           <Text style={styles.textStyle}>Save</Text>
@@ -1074,7 +1123,7 @@ function CreateQuiz({ navigation, route }) {
             navigation.navigate("Home", { quizDisplay: quizArray })
           }
         >
-          <Icon name="home" color="#FFFEFE" size={50}></Icon>
+          <MaterialIcons name="home" color="#FFFEFE" size={50}></MaterialIcons>
         </Pressable>
       </View>
     </View>
@@ -1082,6 +1131,11 @@ function CreateQuiz({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  mobileContainer: {
+    width: "100%",
+    maxWidth: 400,
+    alignSelf: "center",
+  },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1126,10 +1180,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   iconButton: {
-    width: horizontalScale(90),
-    height: verticalScale(90),
+    width: Platform.OS === "web" ? verticalScale(90) : verticalScale(80),
+    height: Platform.OS === "web" ? verticalScale(90) : verticalScale(80),
     backgroundColor: "#3DA35D",
-    borderRadius: 90,
+    borderRadius: Platform.OS === "web" ? 90 : 80,
     padding: 10,
     elevation: 2,
     marginRight: horizontalScale(5),
@@ -1151,11 +1205,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   header: {
-    fontSize: 48,
+    fontSize: 46,
     fontFamily: "Nunito-Bold",
     color: "#134611",
-
     margin: 35,
+    textAlign: "center",
   },
   header2: {
     fontSize: 20,
@@ -1214,11 +1268,15 @@ const styles = StyleSheet.create({
     margin: 40,
   },
   modalView: {
+    // maxHeight: "80%",
+    // overflow: "scroll",
     margin: 20,
     backgroundColor: "#FFFEFE",
     borderRadius: 20,
     padding: 35,
+
     alignItems: "center",
+
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
