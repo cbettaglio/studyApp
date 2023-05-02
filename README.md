@@ -41,7 +41,7 @@ Create a quiz
       If input select, user is prompted to enter the answer
     - Drop down
     - Multiple choice
-      If drop down or multiple choice selected, user is prompted to enter choices, user is all=so provided a means of selected which choice is the correct answer
+      If drop down or multiple choice selected, user is prompted to enter choices, user is also provided a means of selecteing which choice is the correct answer
   - Save question button
     - adds new question to an array of questions for that quiz
   - Exit
